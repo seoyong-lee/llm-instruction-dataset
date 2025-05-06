@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -19,17 +20,16 @@ if os.path.exists("instruct_dataset.jsonl"):
         for line in f:
             item = json.loads(line)
             dataset.append(item)
-            # 중복 방지용 title 저장
             title = item["input"].split("'")[1]
             existing_titles.add(title)
 
-# 새로 처리할 book 범위 (501~1000)
-for book in books[501:600]:
+# 새로 처리할 book 범위 (예: 1001~1050)
+for book in books[1001:1050]:
     title = book["title"]
     description = book["description"]
 
     if title in existing_titles:
-        continue  # 이미 처리한 도서 건너뜀
+        continue
 
     prompt = f"""
 아래는 유아용 도서의 설명입니다. 이 설명을 바탕으로 다음과 같은 추천 조건을 JSON 형식으로 추출해 주세요: theme(주제), type(도서 유형), age(추천 연령).
@@ -50,6 +50,19 @@ for book in books[501:600]:
 
         output = json.loads(response.choices[0].message.content)
 
+        # ✅ age 정규화
+        raw_age = output.get("age")
+        normalized_age = None
+
+        if isinstance(raw_age, (int, float)):
+            normalized_age = raw_age
+        elif isinstance(raw_age, str):
+            digits = re.findall(r"\d+", raw_age)
+            if digits:
+                normalized_age = int(digits[0])  # 가장 먼저 나오는 숫자 사용
+
+        output["age"] = normalized_age
+
         new_item = {
             "instruction": "도서 설명을 보고 추천 조건을 추출하세요.",
             "input": f"'{title}' 책을 아이에게 읽어주고 싶은데, 어떤 책인지 알려주세요.\n\n설명: {description}",
@@ -58,7 +71,6 @@ for book in books[501:600]:
 
         dataset.append(new_item)
 
-        # 파일에 바로 이어쓰기
         with open("instruct_dataset.jsonl", "a", encoding="utf-8") as f:
             f.write(json.dumps(new_item, ensure_ascii=False) + "\n")
 
@@ -66,4 +78,4 @@ for book in books[501:600]:
         print(f"❌ Error for '{title}':", e)
         continue
 
-print("✅ 이어서 instruct_dataset.jsonl 생성 완료.")
+print("✅ instruct_dataset.jsonl 생성 완료 및 age 정규화 적용 완료.")
