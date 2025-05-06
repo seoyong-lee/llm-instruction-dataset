@@ -1,3 +1,5 @@
 test_data.json
 instruct_dataset.jsonl
+
+venv/
 .env

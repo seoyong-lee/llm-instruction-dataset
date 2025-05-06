@@ -1,8 +1,12 @@
 import os
 import json
-import openai
+from openai import OpenAI
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+from dotenv import load_dotenv
+
+load_dotenv()
+
+client = OpenAI()
 
 with open("test_data.json", "r", encoding="utf-8") as f:
     books = json.load(f)
@@ -24,13 +28,13 @@ for book in books[:3]:  # 테스트용 3개만
 """
 
     try:
-        res = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
         )
 
-        output = json.loads(res.choices[0].message.content)
+        output = json.loads(response.choices[0].message.content)
 
         dataset.append(
             {
